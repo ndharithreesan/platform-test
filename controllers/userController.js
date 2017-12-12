@@ -27,7 +27,6 @@ module.exports = {
 
   signup: (req, res, next) => {
     let currentUser = module.exports.compileUser(req.body);
-    console.log(req.body)
     User.find({where: {email: currentUser.email}})
     .then((user) => {
       if(user) {
@@ -41,7 +40,6 @@ module.exports = {
             password: hash
           })
           .then((user)=> {
-            console.log("CREATED")
             let result = {
               token: module.exports.createToken(user),
               message: 'User Created'
@@ -56,29 +54,80 @@ module.exports = {
           })
         }
       )}
-      })
-    },
+    })
+  },
 
-    login: (req, res, next) => {
-      let email = req.body.email;
-      let password = req.body.password;
-      let currentUser;
-      User.findOne({ where: { email: email }})
+  login: (req, res, next) => {
+    let email = req.body.email;
+    let password = req.body.password;
+    let currentUser;
+    User.findOne({ where: { email: email }})
+    .then((user) => {
+      if(!user){
+        res.status(401).json({message:'User/Password is incorrect'})
+      }
+      currentUser = user;
+      return bcrypt.compare(password, user.password)
+    })
+    .then((result) => {
+      if(result) {
+        let response = {
+          token: module.exports.createToken(currentUser),
+          message: 'Logged In'
+        }
+        res.json(response)
+      }
+    })
+  },
+
+  updateUser: (req, res, next) => {
+    let modifiedUser = module.exports.compileUser(req.body)
+    let userId = req.params.userId
+
+    User.findById(userId)
+      .then((user) => {
+        user.email = modifiedUser.email || user.email;
+        user.name = modifiedUser.name || user.name;
+
+        //if the password is changing, have to encrypt
+        if(modifiedUser.password){
+          return bcrypt.hash(modifiedUser.password, 12)
+          .then((hash) => {
+            user.password = hash;
+            return hash
+          })
+        }
+        return user
+      })
+      .then((updatedUser)=>{
+        return updatedUser.save()
+      }).then((result)=>{
+        let response = {
+          token: module.exports.createToken(result),
+          message: 'User Updated'
+        }
+        res.json(response)
+      })
+      .catch((error)=> {
+        console.error(error)
+        res.status(404).json({message:'Could not update User'})
+      })
+  },
+
+  deleteUser: (req, res, next) => {
+    let userId = req.params.userId
+    User.findById(userId)
       .then((user) => {
         if(!user){
-          res.status(401).json({message:'User/Password is incorrect'})
+          res.status(404).json({message:'User not found'})
         }
-        currentUser = user;
-        return bcrypt.compare(password, user.password)
+        return user.destroy()
       })
-      .then((result) => {
-        if(result) {
-          let result = {
-            token: module.exports.createToken(currentUser),
-            message: 'Logged In'
-          }
-          res.json(result)
-        }
+      .then(() => {
+        res.json({message:'User Deleted'})
       })
-    }
+      .catch((error) => {
+        console.error(error)      
+      })
   }
+}
