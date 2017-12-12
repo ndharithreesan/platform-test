@@ -18,7 +18,7 @@ app.use(bodyParser.json());
 
 models.sequelize.sync();
 
-// app.use('/user', userRoutes);
+app.use('/user', userRoutes);
 
 app.listen(port);
 console.log(`App is running on port ${port}`)

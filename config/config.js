@@ -4,6 +4,9 @@ module.exports = {
     database: 'platformtest',
     username: 'platformtester',
     password: 'test',
-    host: 'localhost'
+    host: 'localhost',
+    secret: 'superAwesomeSecret',
+    // expiration is in seconds
+    tokenExpiration: '1h'
   }
 }
