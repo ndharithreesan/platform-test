@@ -1,5 +1,6 @@
 const User = require('../models').user;
 const env = process.env.NODE_ENV || 'development';
+const redisClient = require('../config/redis').redisClient;
 const config = require('../config/config')[env];
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -71,13 +72,27 @@ module.exports = {
     })
     .then((result) => {
       if(result) {
+        let token = module.exports.createToken(currentUser);
+        redisClient.del(token, (error, response) => {
+          if(response){
+            console.log('Token removed from blacklist')
+          } else{
+            console.log('Cannot delete token from redis')
+          }
+        })
         let response = {
-          token: module.exports.createToken(currentUser),
+          token: token,
           message: 'Logged In'
         }
         res.json(response)
       }
     })
+  },
+
+  logout: (req, res, next) => {
+    let token = req.body.token || req.query.token || req.headers['x-access-token'];
+    redisClient.set(token, token);
+    res.json({message:'Logged Out'})
   },
 
   updateUser: (req, res, next) => {
@@ -127,7 +142,7 @@ module.exports = {
         res.json({message:'User Deleted'})
       })
       .catch((error) => {
-        console.error(error)      
+        console.error(error)
       })
   }
 }
